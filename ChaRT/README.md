@@ -1,7 +1,7 @@
 
 # Using _ChaRT_ container image 
 
-This README provides information on how to run (ChaRT)[https://cxc.cfa.harvard.edu/ciao/PSFs/chart2/] 
+This README provides information on how to run [ChaRT](https://cxc.cfa.harvard.edu/ciao/PSFs/chart2/)
 from the container image provided.
 
 ChaRT is the web-based front end to the official Chandra Ray 
