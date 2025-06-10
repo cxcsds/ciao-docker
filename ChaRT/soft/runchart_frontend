@@ -1,0 +1,717 @@
+#!/usr/bin/env python
+
+
+import os
+import sys
+import stat
+import tempfile
+import pickle
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+
+# Load location specific info
+from chart_config_v2 import *
+
+# Load cgi replacement module
+import my_cgi
+
+__version__ = "08 March 2024"
+ListOfMultiObiObsIds = ["82","108","279","380","400","433","800","861","897","906","943","1411","1431","1456","1561","1578","2010","2042","2077","2365","2783","3057","3182","3764","4175","60879","60880","62249","62264","62796"]  # KJG created 4/15/2015 -- list is expected to always be static
+
+
+# ciao stuff
+from pycrates import read_file
+from coords.format import *
+
+
+from chart_classes import *
+
+
+# We remove any/all non standard characters from the inputs to
+# avoid security problems.
+def stripstandard(xx):
+    import re as re
+    normal=re.compile("[a-zA-Z0-9\._+-@]")
+    if None == normal.search(xx):
+        return False
+    return True
+
+def cleanse(xx):
+    return [x for x in xx if stripstandard(x)]
+
+
+
+
+
+def check_radio( form, log ):
+    """
+    Make sure radio buttons are selected
+    """
+    ###sys.stdout.write("Checking form parameters\n")
+
+    for radio in ["coords", "energy", "asol", "how_many" ]:
+        if radio not in form:
+            raise ValueError("Missing {} form value".format(radio))
+
+def check_realizations(form, log):
+    
+    pos = ET.SubElement(log, "realizations")
+    pos.set("method", form["how_many"].value)
+    
+    if "numiter" == form["how_many"].value:
+        ET.SubElement(pos, "numiter").text = form["niter"].value
+    elif "numrays" == form["how_many"].value:
+        ET.SubElement(pos, "numrays").text = form["nrays"].value
+    else:
+        raise ValueError("Unknown number of realizations method")
+
+
+def check_static( form, log ):
+    """
+    Make sure static form elements are present
+    """
+    ###sys.stdout.write( "Checking email\n")
+
+    for ss in ["email", "randseed"]:
+        if ss not in form:
+            vv = ET.SubElement( log, ss )
+            vv.text = "MISSING"            
+            raise ValueError("Missing {} form value".format( ss ))
+        if len(form[ss].value)==0:
+            vv = ET.SubElement( log, ss )
+            vv.text = "BLANK"            
+            raise ValueError("Missing {} form value".format( ss ))
+
+    for ss in ["email", "randseed"]:
+        vv = ET.SubElement( log, ss )
+        vv.text = form[ss].value    
+    if "REMOTE_ADDR" in os.environ:
+        ET.SubElement( log, "ip_address").text = os.environ["REMOTE_ADDR"]
+    if "REMOTE_HOST" in os.environ:
+        ET.SubElement( log, "hostname").text = os.environ["REMOTE_HOST"]
+
+
+def check_coords( form, log) :
+    """
+    Check the coordinates values.
+    """
+    ###sys.stdout.write("Checking coordinate information\n")
+
+
+    pos = ET.SubElement(log, "coordinates")
+
+    if 'coords' not in form:
+        pos.text = "MISSING"
+        raise ValueError("Missing coordinate parameter")
+
+    pos.set( "system", form["coords"].value )        
+
+    if "cel" == form["coords"].value:
+        if "ra" not in form or "dec" not in form:
+            ET.SubElement(pos, "ra").text = "MISSING"            
+            ET.SubElement(pos, "dec").text = "MISSING"
+            raise ValueError("Missing ra or dec values")
+        if len(form["ra"].value) == 0 or len(form["dec"].value)==0 :
+            ET.SubElement(pos, "ra").text = "BLANK"            
+            ET.SubElement(pos, "dec").text = "BLANK"
+            raise ValueError("Missing ra or dec values")
+        ET.SubElement(pos, "ra").text = form["ra"].value
+        ET.SubElement(pos, "dec").text = form["dec"].value
+
+    elif "msc" == form["coords"].value:
+        if "theta" not in form or "phi" not in form:
+            ET.SubElement(pos, "theta").text = "MISSING"
+            ET.SubElement(pos, "phi").text = "MISSING"
+            raise ValueError("Missing theta or phi values")
+        if len(form["theta"].value)==0 or len(form["phi"].value)==0:
+            ET.SubElement(pos, "theta").text = "BLANK"
+            ET.SubElement(pos, "phi").text = "BLANK"
+            raise ValueError("Missing theta or phi values")
+        ET.SubElement(pos, "theta").text = form["theta"].value
+        ET.SubElement(pos, "phi").text = form["phi"].value
+
+    else:
+        raise ValueError( "Unknown value for coordinates = {}.".format( form["coords"].value))
+
+
+
+def check_energy( form, log):
+    """
+    Check the energy parameters
+    """
+    ###sys.stdout.write( "Checking energy parameters\n" )
+    eng = ET.SubElement(log, "spectrum")
+    eng.set( "flavor", form["energy"].value )        
+
+
+    if "mono" == form["energy"].value:
+        if "energy" not in form or "flux" not in form:
+            ET.SubElement(eng, "mono").text = "MISSING"
+            ET.SubElement(eng, "flux").text = "MISSING"
+            raise ValueError("Missing energy or flux for mono energy")
+        if len(form["mono"].value)==0 or len(form["flux"].value)==0:
+            ET.SubElement(eng, "mono").text = "BLANK"
+            ET.SubElement(eng, "flux").text = "BLANK"
+            raise ValueError("Missing energy or flux for mono energy")
+        ET.SubElement(eng, "mono").text = form["mono"].value
+        ET.SubElement(eng, "flux").text = form["flux"].value
+
+    elif "upload_spectrum" == form["energy"].value:
+        if "spectrum" not in form or '' == form["spectrum"].value:
+            ET.SubElement(eng, "filename").text = "MISSING OR BLANK"
+            raise ValueError("Missing spectrum file")
+        ET.SubElement(eng, "filename").text = form["spectrum"].filename
+    else:
+        raise ValueError("Unknown value of energy = {}".format(form["energy"].value))
+
+    
+def check_aspect( form, log ):
+    """
+    Check the aspect solution stuff
+    """
+
+    ###sys.stdout.write( "Checking aspect information\n")
+    asp = ET.SubElement(log, "aspect")
+    asp.set( "flavor", form["asol"].value )        
+
+    if "obi" == form["asol"].value:
+        if "obsid" not in form:
+            ET.SubElement(asp, "obs_id").text = "MISSING"
+            raise ValueError("Missing value error")
+        if "obinum" not in form or '' == form["obinum"].value:        
+            if form["obsid"].value in ListOfMultiObiObsIds:
+                ET.SubElement(asp, "obi_num").text = "MISSING"
+                raise ValueError("{} is a multi-obi obsid, OBI_NUM is required".format(form["obsid"].value))
+
+        ET.SubElement(asp, "obs_id").text = form["obsid"].value
+        if "obinum" in form:
+            ET.SubElement(asp, "obi_num").text = form["obinum"].value
+
+    elif "upload_asol" == form["asol"].value:
+        if "asol_file" not in form or '' == form["asol_file"].value:
+            ET.SubElement(asp, "filename").text = "MISSING"
+            raise ValueError("Missing upload asol file")
+        ET.SubElement(asp, "filename").text = form["asol_file"].filename
+
+    elif "other" == form["asol"].value:
+        for cc in ["ra_pnt", "dec_pnt", "roll_pnt", "exposure"]:
+            if cc not in form:
+                ET.SubElement(asp, cc).text = "MISSING"
+                raise ValueError("Missing {} value".format(cc))
+            if len(form[cc].value) == 0:
+                ET.SubElement(asp, cc).text = "BLANK"
+                raise ValueError("Missing {} value".format(cc))
+
+        for cc in ["ra_pnt", "dec_pnt", "roll_pnt", "exposure"]:
+            ET.SubElement(asp, cc).text = form[cc].value
+
+    else:
+        raise ValueError("Unknown value for asol={}. Stop hacking.".format( form["asol"].value))
+
+
+def _fix_q_att( infile, outfile ):
+    """
+    
+    """
+    from Quaternion import Quat
+    from pycrates import read_file, write_file
+    import numpy as np
+
+    tab = read_file(infile)
+    ra = tab.get_column("ra").values
+    dec = tab.get_column("dec").values
+    roll = tab.get_column("roll").values
+    q_att = tab.get_column("q_att")
+
+    qnew = [Quat( rdl ).q for rdl in zip(ra,dec,roll) ]
+
+    q_att.values = np.array(qnew).reshape( q_att.values.shape)
+
+    write_file(tab, outfile, clobber=True )
+
+
+
+def get_asol_file_upload(form):
+    """
+    Save the uploaded aspect solution file.
+    """
+
+    try:
+        fname = os.path.basename(form["asol_file"].filename)
+    except:
+        fname = "pcad_asol.fits"
+
+    tmp_suffix = ".tmp"
+    with open(fname+tmp_suffix,"wb") as fp:
+        fp.write( form["asol_file"].value )
+
+    _fix_q_att( fname+tmp_suffix, fname )
+
+    return fname
+    
+
+def get_asol_file_archive(form):
+
+    server = "cda.cfa.harvard.edu"
+    list_resource = "https://{0}/srservices/archiveFileList.do".format(server)
+    file_resource = "https://{0}/srservices/archiveFile.do".format(server)
+
+    def make_URL_request( resource, vals ):
+        """
+        Query and retrieve results from resourse using dictionary of
+        vals values.
+        """
+        import urllib.parse  as ulib_parse
+        import urllib.request as ulib_request
+        #~ import urllib2 as urllib2
+
+        params = ulib_parse.urlencode( vals )  # Encode into URL string, escape stuff/etc.
+
+        request = ulib_request.Request( resource, bytearray(params,"ascii"))
+        request.add_header('User-Agent', 'ChaRT/v2.2') #make easy to ID in logs
+
+        try:
+            response = ulib_request.urlopen( request )
+            page = response.read()
+        except Exception as e:
+            page = make_CURL_request( resource, vals )
+        
+        if len(page) == 0:
+            raise Exception("Problem accessing resource {0}".format(resource))
+        
+        if response.getcode() != 200:
+            raise Exception( page )
+        
+        return page
+
+
+    def make_CURL_request( resource, vals ):
+        """
+        Query and retrieve results from resourse using dictionary of
+        vals values.
+        """
+
+        import urllib as urllib
+        params = urllib.parse.urlencode( vals )  # Encode into URL string, escape stuff/etc.
+        url = "{}?{}".format(resource,params)
+
+        import subprocess as sp
+        
+        # Need the '-L' to enable curl to follow redirect 
+        try:
+            cmd = " ".join(['curl', '--silent', '-L', url ])
+            page = sp.check_output(cmd)
+        except Exception as e:
+            print(e)
+            raise
+        
+        if len(page) == 0:
+            raise Exception("Problem accessing resource {0}".format(resource))
+
+        return page
+        
+
+    def arc4gl( obsid, obinum, asptype, filename ):
+        """
+        Generate arc4gl command for asol files
+        """    
+        retval = { "dataset" : "flight",
+                   "detector" : "pcad", 
+                   "subdetector" : "aca",
+                   "level" : "1",
+                   "filetype" : asptype,
+                   "obsid" : str(obsid)
+                   }
+
+        if None != obinum: 
+            retval["obi"] = str(obinum)
+
+        if None != filename:
+            retval["filename"] = filename
+        
+        return retval
+
+    def get_filenames( page ):
+        """
+        """    
+        lines = [x for x in page.decode("ascii").split("\n") if x.startswith("pcad")]
+        if 0 == len(lines):
+            raise RuntimeError("No asol files")
+
+        # Note: filenames are not sorted
+        filenames = [x.split()[0].strip() for x in lines ]
+        filenames.sort()
+        
+        return filenames
+        
+    obsid = form["obsid"].value
+    if "obinum" in form:
+        obi = form["obinum"].value
+    else:
+        obi = None
+    
+    
+    try:
+        asptype="aspsolobi"
+        params = arc4gl( obsid, obi, asptype, None )
+        page = make_URL_request( list_resource, params )
+        filenames = get_filenames(page)
+    except Exception as e:
+        asptype="aspsol"
+        params = arc4gl( obsid, obi, asptype, None )
+        page = make_URL_request( list_resource, params )
+        filenames = get_filenames(page)
+        
+
+    for ff in filenames:
+        # The archive is broken.  In the above calls, if asptype=aspsolobi, it will
+        # go ahead and return the aspsol file(s) if there is not aspsolobi in the
+        # archive.  But you have to ask for the correct asptype when you actually
+        # make the FileRetrieve call. :angry: So, the only way to know is to 
+        # parse the file name.  
+        #
+        # Per obi files have pcadf<obsid>_<obinum>N<ver>_asol1.fits.
+        # Per cai files have pcadf<tstart>N<ver>_asol1.fits
+        #
+        # So, if you split on the N, the 1st element[0], will either have an
+        # underscore of not.  Underscore -> per-obi file.
+
+        fname_hack = ff.split("N")[0]
+        if "_" not in fname_hack:
+            asptype="aspsol"
+
+        params = arc4gl( obsid, obi, asptype, ff )
+        page = make_URL_request( file_resource, params )
+        with open(ff, "wb") as fp:
+            fp.write( page )
+
+    if len(filenames) == 0:
+        raise RuntimeError("No public asol files found for this observation")
+    if len(filenames) == 1:
+        return filenames[0]
+
+    from ciao_contrib.runtool import dmmerge    
+    dmmerge( infile=filenames, outfile="pcad_asol.fits", lookupTab="", clobber=True )
+    return dmmerge.outfile
+
+    
+
+def get_asol_file_other( form ):    
+    """
+    
+    """
+    return AspectValue( form["ra_pnt"].value, form["dec_pnt"].value, form["roll_pnt"].value, form["exposure"].value )
+    
+
+def get_asol_file( form ):
+    """
+    Setup the aspect info from the correct location
+    """
+
+    if "obi" == form["asol"].value:
+        try:
+            archive_file = get_asol_file_archive(form)
+        except Exception as e:
+            print(e)
+            raise RuntimeError("Could not locate aspect solution file in public archive.  If data are proprietary please upload asol file"+str(e))
+        try:
+            asp = AspectFile(archive_file )
+        except:
+            raise RuntimeError("Problem with aspect solution file")
+
+    elif "upload_asol" == form["asol"].value:
+        try:
+            upload_file = get_asol_file_upload(form)
+        except Exception as ee:
+            raise RuntimeError("Problem uploading aspect solution file")
+        try:
+            asp = AspectFile(upload_file)
+        except:
+            raise RuntimeError("Uploaded file does not appear to be a valid aspect solution file.")
+
+    elif "other" == form["asol"].value:
+        try:
+            asp = get_asol_file_other(form)
+        except Exception as e:
+            raise RuntimeError("Invalid coordinates or other aspect parameter errors: "+str(e))
+        
+    else:
+        raise ValueError("Really should never be here!")
+        
+    return asp
+
+
+def get_spectrum_upload( form ):    
+    """
+    Save the uploaded spectrum file
+    """
+
+    try:
+        fname = os.path.basename( form["spectrum"].filename )
+    except:
+        fname = "spectrum.dat"
+
+    with open(fname, "wb") as fp:
+        fp.write( form["spectrum"].value )
+    
+    return SpectrumFile(fname)
+
+    
+def get_spectrum_mono( form):
+    """
+    Save the monochrcomatic energy and flux values
+    """
+    retval = SpectrumMono( float(form["mono"].value), float(form["flux"].value ))
+    return retval
+
+
+def get_spectrum_file(form):    
+    """
+    
+    """
+    if "upload_spectrum" == form["energy"].value:
+        return get_spectrum_upload(form)
+    elif "mono" == form["energy"].value:
+        return get_spectrum_mono(form)
+    else:
+        raise ValueError("I cannot be here.")
+    
+
+    
+def convert_msc_to_cel(form, asol, evtfile):
+    """
+    Convert theta/phi to ra/dec    
+    """
+    from ciao_contrib.runtool import dmcoords
+    ra,dec,roll = asol.get_ra_dec_roll()
+    
+    dmcoords.punlearn()
+    dmcoords.infile=evtfile
+    dmcoords.asolfile="none"
+    dmcoords.celfmt="deg"
+    dmcoords.option="msc"
+    dmcoords.theta = float(form["theta"].value)
+    dmcoords.phi = float(form["phi"].value)
+    dmcoords()
+
+    return dmcoords.ra, dmcoords.dec
+
+
+def get_coords(form, asol, evtfile):
+    """
+    Routine to deal with ra/dec conversions
+    """
+    if "cel" == form["coords"].value:
+        try:
+            ra = float( form["ra"].value )
+            dec = float( form["dec"].value )
+        except Exception as E:
+            ra,dec = sex2deg( form["ra"].value.strip(), form["dec"].value.strip())
+
+    elif "msc" == form["coords"].value:
+        ra,dec = convert_msc_to_cel( form, asol, evtfile )
+
+    else:
+        raise ValueError("Really?  How'd I get here?")
+    
+    return ra,dec
+
+
+def create_fake_evtfile( tab, rdr, tt ):
+    """
+    We create a fake/simple event file in TEXT/DTF format
+    that we can use with dmcoords and run_saotrace_and_marx.
+    
+    Basically all we need is the WCS and _NOM and _PNT values.
+    Without an ASOL, the START and STOP times are used.
+    """
+
+    ra = rdr[0]
+    dec = rdr[1]
+    roll = rdr[2]
+    
+    start = tt[0]
+    stop = tt[1]
+    
+    out="""#TEXT/DTF
+    XTENSION= "TABLE   "          
+    HDUNAME = "EVENTS  "          
+    EXTNAME = "EVENTS  "          
+    TFIELDS =                    2
+    TTYPE1  = "x       "           / sky coordinates
+    TFORM1  = "1E      "           / data format of field.
+    TUNIT1  = "pixel   "           / physical unit of field.
+    TTYPE2  = "y       "           / sky coordinates
+    TFORM2  = "1E      "           / data format of field.
+    TUNIT2  = "pixel   "           / physical unit of field.
+    MTYPE1  = "sky     "           / sky coordinates
+    MFORM1  = "x,y     "          
+    MTYPE2  = "EQPOS   "           / DM Keyword: Descriptor name.
+    MFORM2  = "RA,DEC  "           / [deg] 
+    TCTYP1  = "RA---TAN"          
+    TCRVL1  =  {ra}
+    TCRPX1  =  4.0965000000000E+03
+    TCDLT1  = -1.3666666666667E-04
+    TCUNI1  = "deg     "          
+    TCTYP2  = "DEC--TAN"          
+    TCRVL2  = {dec}
+    TCRPX2  =  4.0965000000000E+03
+    TCDLT2  =  1.3666666666667E-04
+    TCUNI2  = "deg     "          
+    TSTART  =  {tstart} / [s] Observation start time (MET)G
+    TSTOP   =  {tstop} / [s] Observation end time (MET)
+    DATE-OBS= "2015-04-24T00:00:00" / An awesome day
+    MISSION = "AXAF    "           / Mission
+    TELESCOP= "CHANDRA "           / Telescope
+    INSTRUME= "ACIS    "           / Instrument
+    DETNAM  = "ACIS-01236"         / Detector
+    GRATING = "NONE    "           / Grating
+    RA_PNT  =  {ra} / [deg] Pointing RA
+    DEC_PNT =  {dec} / [deg] Pointing Dec
+    ROLL_PNT=  {roll} / [deg] Pointing Roll
+    RA_NOM  =  {ra} / [deg] Nominal RA
+    DEC_NOM =  {dec} / [deg] Nominal Dec
+    ROLL_NOM=  {roll} / [deg] Nominal Roll
+    SIM_X   = -7.8090834371673E-01 / [mm] SIM focus pos
+    SIM_Y   =  0.0000000000000E+00 / [mm] SIM orthogonal axis pos
+    SIM_Z   = -2.3358743446083E+02 / [mm] SIM translation stage pos
+    TIMEDEL =  0.0000000000000E+00 / Inferred duration of secondary exp. (s)
+    FLSHTIME=  0.0000000000000E+00 / [s] 
+    EXPTIME =  3.2000000000000E+00 / [s] 
+    DTYCYCLE=                    0
+    FIRSTROW=                    1 / Index of first row of CCD (sub)array readout
+    FLSHTIMA=  0.0000000000000E+00 / Inferred duration of flush before primary fram
+    FLSHTIMB=  0.0000000000000E+00 / Inferred duration of flush before secondary fr
+    CYCLE   = "P       "           / events from which exps? Prim/Second/Both
+    READMODE= "TIMED   "           / Read mode
+    DY_AVG  =  4.5452498327000E-02 / [mm] Mean DY during observation
+    DZ_AVG  =  2.1333081580000E-01 / [mm] Mean DZ during observation
+    DTH_AVG = -2.1552640335000E-03 / [deg] Mean DTHETA during observation
+    END
+    """.format( ra=ra, dec=dec, roll=roll, tstart=start, tstop=stop)
+    
+    
+    out = [ o.strip() for o in out.split("\n") ] # strip off leading white space
+    out = "\n".join(out)
+    
+    # write file
+    with open("evt.dtf", "w") as fp:
+        fp.write( out )
+    
+    return "evt.dtf"
+    
+
+def get_realizations(form):
+    
+    if form["how_many"].value == 'numiter':
+        return Iterations(form["niter"].value)
+    elif form["how_many"].value == 'numrays':
+        return Rays(form["nrays"].value)
+    else:
+        raise ValueError("Unknown how_many {}".format(form["how_many"]))
+
+
+def check_form(form):
+    """
+    Check form elements.  Added logging.
+    """
+
+    ######from posixfile import open
+
+    if os.path.exists( LOG_FILE ):
+        fd = open( LOG_FILE, "r+")
+        old = fd.read()
+        fd.seek(0)        
+    else:
+        fd = open( LOG_FILE, "w+")
+        old = "<requests />"
+
+    #####fd.lock( "r|")
+
+    logs = ET.fromstring(old)
+    logfile = ET.ElementTree(logs)    
+    log = ET.SubElement(logs,"request")
+    log.set( "verified", "False")
+    log.set( "version", __version__ )
+    ET.SubElement( log, "submitted_time").text = str(datetime.now())
+
+    try:
+        check_radio(form, log)
+        check_static(form, log)
+        check_coords(form, log)
+        check_energy(form, log)
+        check_aspect(form, log)
+        check_realizations(form, log)
+        log.set( "verified", "True")
+
+    finally:
+        moo = ET.tostring(logs)        
+        fd.write( moo.decode("ascii") )
+        #####fd.lock("u")
+        fd.close()
+
+
+def main():
+    # Load the CGI fileds
+    # ~ form = cgi.FieldStorage()
+    form = my_cgi.process_request()
+
+    try:
+        if 'email' in form:
+            email = form['email'].value
+        else:
+            email = None
+
+        check_form( form )
+
+        # Setup temp working dir
+        tmpdir = tempfile.mkdtemp( dir= TMP_ROOT )
+        os.chdir(tmpdir)
+
+        # Extract data from form
+        asol = get_asol_file( form )
+        spectrum = get_spectrum_file( form )
+        evtfile = create_fake_evtfile( form, asol.get_ra_dec_roll(), asol.get_start_stop_times())
+        coords = get_coords( form, asol, evtfile )
+        loop = get_realizations(form)
+
+        randseed = form["randseed"].value
+        
+        with open( "pickle.obj", "wb") as fp:
+            pickle.dump( (asol,spectrum,evtfile,coords,email,loop,randseed), fp)
+
+        print(tmpdir)
+        
+    except Exception as ee:
+        
+
+        # ~ tmpdir = TmpDir( tmpdir )  # make sure it gets deleted
+        err = str(ee)
+        print(err)
+        # ~ from email.mime.text import MIMEText
+        # ~ from smtplib import SMTP
+
+        # ~ msg = MIMEText( err )
+        # ~ msg["Subject"] = "Error running ChaRT"
+        # ~ msg["From"] = RAYRUNNER
+        # ~ msg["To"] = email
+        # ~ msg["Bcc"] = "kglotfelty@cfa.harvard.edu"
+
+        # ~ if email:
+            # ~ s=SMTP("head.cfa.harvard.edu")
+            # ~ s.sendmail( RAYRUNNER, [msg["To"]]+[msg["Bcc"]], msg.as_string())
+            # ~ s.quit()
+        # ~ else:
+            # ~ print(msg.as_string())
+
+        raise
+        
+
+
+if __name__ == "__main__":
+
+    main()
+
+
+

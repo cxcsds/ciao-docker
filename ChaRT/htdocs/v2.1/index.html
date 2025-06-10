@@ -1,0 +1,206 @@
+<html>
+<head>
+<title>ChaRT v2.1</title>
+</head>
+<body>
+
+<h1>Welcome to ChaRT v2.1</h1>
+
+<form action="/cgi-bin/runwrapper" method="post" enctype="multipart/form-data"  id="chart_v2.1" >
+
+<!--
+<fieldset><legend>User Information</legend>
+    <table border="0"> 
+    <tr>
+      <td>Email Address</td>
+      <td>
+          <div style="display: inline" title="Valid email address is required to receive notification when simulation is complete">
+          <input type="email" name="email" size="40" id="email" required="true" />
+            </div>
+          </td>
+    </tr>
+    </table>
+</fieldset>
+-->
+
+<input type="hidden" name="email" id="email" value="ciaouser@virutal.box"/>
+
+<fieldset><legend>Source Coordinates</legend>
+<table>
+
+<tr>
+  <td><input type="radio" name="coords" value="cel" id="coords_cel" checked="true" onchange="document.getElementById('src_ra').required=true;document.getElementById('src_dec').required=true;document.getElementById('src_theta').required=false;document.getElementById('src_phi').required=false;" /> Celestial: </td>
+  <td>
+    <div style="display: inline" title="Right Ascension of source in degrees (0:360) or in sexagesimal format">R.A. 
+    <input type="text" name="ra" id="src_ra" required="true" onChange="document.getElementById('coords_cel').checked=true;document.getElementById('coords_cel').onchange();"/> 
+    </div> 
+  </td>
+  <td>
+    <div style="display: inline" title="Declination of source in degrees (-90:90) or in sexagesimal format">Dec. 
+    <input type="text" name="dec" id="src_dec" required="true" onChange="document.getElementById('coords_cel').checked=true;document.getElementById('coords_cel').onchange();"/></div> </td>
+</tr>
+
+<tr>
+  <td>
+      <input type="radio" name="coords" value="msc" id="coords_msc" onchange="document.getElementById('src_ra').required=false;document.getElementById('src_dec').required=false;document.getElementById('src_theta').required=true;document.getElementById('src_phi').required=true;"/> Off Axis Angle: </td>
+  <td>
+      <div style="display: inline" title="Angular distance from the optical axis">
+      &theta; 
+    <input type="text" name="theta" id="src_theta" onChange="document.getElementById('coords_msc').checked=true;document.getElementById('coords_msc').onchange();if ((this.value<0)||(this.value>30)){ alert('Theta must be between 0 and 30 arcmin.');this.value=''}"}/> [arcmin], 
+    </div>
+  </td>
+  <td>
+      <div style="display: inline" title="Azimuthal angle around the optical axis relative to the HRMA">
+      &phi; 
+    <input type="text" name="phi" id="src_phi" onChange="document.getElementById('coords_msc').checked=true;document.getElementById('coords_msc').onchange();if ((this.value<-360)||(this.value>360)){ alert('Phi must be between -360 and 360 degrees.');this.value=''}"/> [deg]
+     </div>
+  </td>
+</tr>
+</table>
+</fieldset>
+
+<fieldset><legend>Source Spectrum</legend>
+    <table border="0">
+        <tr>
+
+
+          <td><input type="radio" name="energy" value="upload_spectrum" id="spectrum_file" checked="true" onchange="document.getElementById('spectrum').required=true;document.getElementById('mono').required=false;document.getElementById('flux').required=false;"/> 
+             <div style="display: inline" title="Spectrum file should be a 3 column ASCII file with ENERGY_LO [keV], ENERGY_HI [keV], and FLUX [photon/cm^2/sec]">
+          ASCII Spectrum file:</td>
+        </div>
+          <td>
+              <input type="file" name="spectrum" id="spectrum" required="true" 
+              onChange="document.getElementById('spectrum_file').checked=true; 
+              document.getElementById('spectrum_file').onchange();"/> 
+              </td>
+        </tr>
+    </table>
+    <table border="0">
+        <tr>
+          <td><input type="radio" name="energy" value="mono" id="spectrum_mono" onchange="document.getElementById('spectrum').required=false;document.getElementById('mono').required=true;document.getElementById('flux').required=true;"/> </td>
+
+          <td><div style="display: inline" title="Monochromatic energy. Value should be betwee 0.2 and 10.0 keV">
+              Monochromatic Energy: <input type="text" name="mono" id="mono" onChange="document.getElementById('spectrum_mono').checked=true;document.getElementById('spectrum_mono').onchange();if ((this.value<0.2)||(this.value>10.0)){ alert('Monochromatic energy must be between 0.2 and 10.0 keV.');this.value=''}"/> [keV],
+              </div>
+              </td>
+          <td><div style="display: inline" title="Flux at specified energy.  Values should be between 1e-9 and 1e-2 photons/cm^2/sec">
+              Photon Flux: <input type="text" name="flux" id="flux" onChange="document.getElementById('spectrum_mono').checked=true;;document.getElementById('spectrum_mono').onchange();if ((this.value<1.0e-9)||(this.value>1.0e-2)){ alert('Flux must be between 1.0e-9 and 1.0e-2 photon/cm^2/sec.');this.value=''}"/> [photons/cm^2/sec]
+              </div>
+              </td>
+        </tr>
+
+    </table>
+</fieldset>
+
+<fieldset><legend>Aspect Information</legend>
+
+        <table border="0">
+            <tr>
+              <td><input type="radio" name="asol" value="obi" id="asol_obi" checked="true" onchange="document.getElementById('asol_obsid').required=true;document.getElementById('asol_file').required=false;document.getElementById('ra_pnt').required=false;document.getElementById('dec_pnt').required=false;document.getElementById('roll_pnt').required=false;document.getElementById('exposure').required=false;" />
+              Existing Public Observation: </td>
+                <!-- The list of multi obi obs_id's is static.  If there is one, then we need to enable the obi_num box -->
+              <td>
+                  <div style="display: inline" title="Chandra OBS_ID value.  Should be a value between 1 and 65535. Only datasets that are public can be used at this time.">
+                  OBS_ID <input type="number" name="obsid" size="6" id="asol_obsid" required="true"
+                   onChange="document.getElementById('asol_obi').checked=true;document.getElementById('asol_obi').onchange();if (['82','108','279','380','400','433','800','861','897','906','943','1411','1431','1456','1561','1578','2010','2042','2077','2365','2783','3057','3182','3764','4175','60879','60880','62249','62264','62796'].indexOf(this.value)>-1) {document.getElementById('asol_obinum').disabled=false;document.getElementById('asol_obinum').required=true;} else {document.getElementById('asol_obinum').disabled=true;document.getElementById('asol_obinum').required=false;};if ((this.value<1)||(this.value>65535)){ alert('OBS_ID must be between 1 and 65535.');this.value='';}"/>
+                  </div>
+                
+                </td>
+                
+              <td>
+                  <div style="display: inline" title="Certain Chandra OBS_IDs are split into multiple OBI_NUMs.  If the OBS_ID provided falls into this category the OBI_NUM value will need to be supplied. This box will be enabled for those OBS_IDs only.">                  
+                  OBI_NUM <input type="number" name="obinum" size="3" id="asol_obinum" disabled="true" onChange="document.getElementById('asol_obi').checked=true;document.getElementById('asol_obi').onchange();if ((this.value<0)||(this.value>9)){ alert('OBI_NUM must be between 0 and 9.');this.value=''}"/></td>
+                </div>
+                
+            </tr>
+        </table>
+        <table border="0">
+        <tr>
+          <td><input type="radio" name="asol" value="upload_asol" id="asol_upload" onchange="document.getElementById('asol_obsid').required=false;document.getElementById('asol_file').required=true;document.getElementById('ra_pnt').required=false;document.getElementById('dec_pnt').required=false;document.getElementById('roll_pnt').required=false;document.getElementById('exposure').required=false;"/>
+          
+          <div style="display: inline" title="Chandra aspect solution file, pcadf..._asol1.fits.  If there is more than one file, users must dmmerge them together.">
+          Upload aspect solution file:
+          </div>
+          </td>
+          <td><input type="file" name="asol_file" id="asol_file" onChange="document.getElementById('asol_upload').checked=true;document.getElementById('asol_upload').onchange()"/></td>
+        </tr>
+        </table>
+        <table border="0">
+        <tr>
+          <td><input type="radio" name="asol" value="other" id="asol_other" onchange="document.getElementById('asol_obsid').required=false;document.getElementById('asol_file').required=false;document.getElementById('ra_pnt').required=true;document.getElementById('dec_pnt').required=true;document.getElementById('roll_pnt').required=true;document.getElementById('exposure').required=true;"/>
+          Other, specify: </td>
+          <td>
+              <div style="display: inline" title="Right Ascension of telescope pointing in degrees (0:360) or in sexagesimal format">
+              R.A.: <input type="text" name="ra_pnt" size="12" id="ra_pnt" onChange="document.getElementById('asol_other').checked=true;document.getElementById('asol_other').onchange();"/>
+             </div>
+          </td>
+          <td>
+              <div style="display: inline" title="Declination of telescope pointing in degrees (-90:90) or in sexagesimal format">
+              Dec.: <input type="text" name="dec_pnt" size="12" id="dec_pnt" onChange="document.getElementById('asol_other').checked=true;document.getElementById('asol_other').onchange();"/> 
+             </div>
+
+          </td>
+          <td>
+              <div style="display: inline" title="Roll angle of the telescope in degrees (0:360)">
+              ROLL: <input type="text" name="roll_pnt" size="12" id="roll_pnt" onChange="document.getElementById('asol_other').checked=true;;document.getElementById('asol_other').onchange();if ((this.value<0)||(this.value>360)){ alert('ROLL must be between 0 and 360 degrees.');this.value=''}"/>
+             </div>
+          </td>
+          <td>
+              <div style="display: inline" title="Exposure time to use for observation, (0:200) ksec">
+              Exposure: <input type="text" name="exposure" size="12" id="exposure" onChange="document.getElementById('asol_other').checked=true;;document.getElementById('asol_other').onchange();if ((this.value<1)||(this.value>200)){ alert('Exposure time must be between 1 and 200 ksec.');this.value=''}"/> [ksec]
+             </div>
+          </td>         
+        </tr>
+    </table>
+</fieldset>
+
+<fieldset><legend>Realizations</legend>
+    <table>
+        <tr>
+          <td><input type="radio" name="how_many" value="numiter" id="niter_check" checked="true"
+            onchange="document.getElementById('nrays').required=false;"/>
+          </td>
+
+          <td>
+              <div style="display: inline" title="Number of simulations to run.">
+              Number of iterations <input type="number" name="niter" value="1" id="niter" 
+              required="true" onChange="if ((this.value<1)||(this.value>20)){ 
+              alert('Number of iterations must be between 1 and 20.');this.value='1'};
+              document.getElementById('niter_check').checked=true;
+              document.getElementById('nrays_check').required=false;"/> 
+              </div>
+          </td>
+        </tr>
+
+        <tr>
+          <td><input type="radio" name="how_many" value="numrays" id="nrays_check"
+            onchange="document.getElementById('niter').required=false;"/>
+          </td>
+
+          <td>
+              <div style="display: inline" title="Number of rays to generate.">
+              Number of rays <input type="number" name="nrays" value="1000" id="nrays" required="true" 
+              onChange="if ((this.value<1)||(this.value>1000000)){ 
+              alert('Number of rays must be between 1 and 1000000.');this.value='1000'};
+              document.getElementById('nrays_check').checked=true;
+              document.getElementById('niter_check').required=false;"/>               
+              
+              </div>
+          </td>
+        </tr>
+
+
+    </table>
+</fieldset>
+<p></p>
+
+<div  title="Random seed to start simulation.  A value of -1 will use current time.">
+Random Seed <input type="number" name="randseed" value="-1" id="randseed" required="true" /></td>
+</div>
+
+
+<br/>
+<input type="submit" name="submit" value="Run ChaRT">
+<input type="reset"  name="reset" value="Reset Inputs">
+</form>
+</body>

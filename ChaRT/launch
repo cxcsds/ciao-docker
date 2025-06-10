@@ -1,0 +1,6 @@
+#! /bin/bash
+
+source /opt/conda/etc/profile.d/conda.sh
+conda activate ciao-4.17.0
+
+python -m http.server --cgi 8888 -d /proj/saotrace

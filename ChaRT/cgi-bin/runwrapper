@@ -1,0 +1,54 @@
+#! /bin/bash
+
+CIAO_ROOT=/opt/conda/envs/ciao-4.17.0
+HTTP_ROOT=/proj/saotrace
+SAOTRACE_ROOT=/opt/saotrace
+export SAOTRACE_DB=/opt/saotrace-db
+
+
+#~ USER=root
+#~ export USER
+#~ HOME=/home/$USER
+#~ export HOME
+
+TMP_ROOT=$HOME/tmp
+
+id
+
+mkdir -p ${TMP_ROOT}/tmp ${TMP_ROOT}/logs ${TMP_ROOT}/output
+
+export INSTALLDIR=${SAOTRACE_ROOT}
+source ${INSTALLDIR}/bin/saotrace_setup.sh
+
+#~ source ${CIAO_ROOT}/bin/ciao.sh -o  -q 2>&1 
+#~ conda activate ciao-4.17.0
+ASCDS_WORK_PATH=$TMP_ROOT
+
+export SSL_CERT_FILE=${CIAO_ROOT}/ssl/cacert.pem
+export SSL_CERT_DIR=${CIAO_ROOT}/ssl
+
+cd ${HTTP_ROOT}/soft
+
+# Run the front end to upload files and setup parameters
+# It returns the tmpdir name.  All files and pickled python
+# stuff is stored in there ready to run.
+
+tmpdir=`${HTTP_ROOT}/soft/runchart_frontend` 
+stt=$?
+
+if test $stt -ne 0
+then
+  # User will get email with error message
+  exit 0
+fi
+
+
+chmod 777 $tmpdir
+
+# Run the backend in background to let web connection close
+ 
+${HTTP_ROOT}/soft/runchart_backend $tmpdir 2>&1
+
+
+exit 0
+
