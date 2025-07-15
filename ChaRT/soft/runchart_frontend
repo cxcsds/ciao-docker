@@ -32,7 +32,7 @@ from chart_classes import *
 # avoid security problems.
 def stripstandard(xx):
     import re as re
-    normal=re.compile("[a-zA-Z0-9\._+-@]")
+    normal=re.compile(r"[a-zA-Z0-9\._+-@]")
     if None == normal.search(xx):
         return False
     return True
