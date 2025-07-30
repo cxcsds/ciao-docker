@@ -17,8 +17,10 @@ RUN mkdir -p /proj/saotrace && chmod 777 /opt /proj/saotrace
 WORKDIR /workdir
 
 # Add minimal CALDB w/ just pixlib CALDB files (needs w/ dmcoords)
-ADD chandra_caldb_pixlib-${CALDBVER}.tar ./
-RUN chmod -R a+rwx CALDB  && \
+COPY chandra_caldb_pixlib-${CALDBVER}.tar ./
+RUN \
+	tar xf chandra_caldb_pixlib-${CALDBVER}.tar && \
+	chmod -R a+rwx CALDB  && \
     mkdir -p /workdir/linux-64 && \
     chmod -R a+rwx /workdir/linux-64
 
@@ -42,7 +44,7 @@ RUN curl -L https://github.com/conda-forge/miniforge/releases/latest/download/Mi
 
 # Install CIAO
 
-ADD ciao-4.18.0.dev-py312h90da0fc_0.conda ./linux-64/
+COPY ciao-4.18.0.dev-py312h90da0fc_0.conda ./linux-64/
 
 RUN \
     conda index /workdir && \
@@ -64,17 +66,18 @@ WORKDIR /workdir
 # Now install ChaRT website files
 
 # Website stuff
-ADD index.html /proj/saotrace/
-ADD cgi-bin /proj/saotrace/cgi-bin
-ADD soft /proj/saotrace/soft
-ADD htdocs/v2.1 /proj/saotrace/htdocs/v2.1
-ADD htdocs  /proj/saotrace/htdocs
-ADD launch /proj/saotrace
+COPY index.html /proj/saotrace/
+COPY cgi-bin /proj/saotrace/cgi-bin
+COPY soft /proj/saotrace/soft
+COPY htdocs/v2.1 /proj/saotrace/htdocs/v2.1
+COPY htdocs  /proj/saotrace/htdocs
+COPY launch /proj/saotrace
 
 # Patched version of simulate_psf that uses SAOTrace
-ADD simpsf.tar ./
+COPY simpsf.tar ./
 
-RUN cd /workdir && \
+RUN \
+	tar xf simpsf.tar && \
     mv -vf simulate_psf $CONDA_DIR/envs/ciao-${CIAOVER}/bin/simulate_psf && \
     mv -vf simulate_psf.par $CONDA_DIR/envs/ciao-${CIAOVER}/param/simulate_psf.par && \
     mv -vf runtool.py $CONDA_DIR/envs/ciao-${CIAOVER}/lib/python${PYVER}/site-packages/ciao_contrib/runtool.py  && \
