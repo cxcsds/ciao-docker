@@ -51,7 +51,9 @@ are using `/Users/mac_user/Temp/workdir/output`.
 We can now run the web server from the command line
 
 ```bash
-podman run --rm -t -p 8888:8888 --arch=amd64 -v /Users/mac_user/Temp/workdir/output:/workdir/output --name=chart chart:2.0.5-4.17.0
+podman run --rm -t -p 8888:8888 --arch=amd64 \
+  -v /Users/mac_user/Temp/workdir/output:/workdir/output \
+  --name=chart chart:2.0.5-4.17.0
 ```
 
 The arguments are as follows.

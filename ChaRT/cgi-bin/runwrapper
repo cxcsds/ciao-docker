@@ -11,11 +11,9 @@ export SAOTRACE_DB=/opt/saotrace-db
 #~ HOME=/home/$USER
 #~ export HOME
 
-TMP_ROOT=$HOME/tmp
+TMP_ROOT=/workdir/output
 
-id
-
-mkdir -p ${TMP_ROOT}/tmp ${TMP_ROOT}/logs ${TMP_ROOT}/output
+mkdir -p ${TMP_ROOT}
 
 export INSTALLDIR=${SAOTRACE_ROOT}
 source ${INSTALLDIR}/bin/saotrace_setup.sh

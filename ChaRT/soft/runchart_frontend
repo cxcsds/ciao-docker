@@ -624,6 +624,8 @@ def check_form(form):
         old = fd.read()
         fd.seek(0)        
     else:
+        dd = os.path.dirname(LOG_FILE)
+        os.makedirs(dd, exist_ok=True)
         fd = open( LOG_FILE, "w+")
         old = "<requests />"
 
