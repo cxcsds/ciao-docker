@@ -7,7 +7,7 @@ LABEL maintainer="Ken Glotfelty <glotfeltyk@si.edu>" \
 ARG CONDA_DIR=/opt/conda
 ARG CIAOVER=4.17.0
 ARG CALDBVER=4.12.0
-ARG PYVER=3.12
+ARG PYVER=3.11
 
 # For ChaRT
 EXPOSE 8888
@@ -19,8 +19,8 @@ WORKDIR /workdir
 # Add minimal CALDB w/ just pixlib CALDB files (needs w/ dmcoords)
 COPY chandra_caldb_pixlib-${CALDBVER}.tar ./
 RUN \
-	tar xf chandra_caldb_pixlib-${CALDBVER}.tar && \
-	chmod -R a+rwx CALDB  && \
+    tar xf chandra_caldb_pixlib-${CALDBVER}.tar && \
+    chmod -R a+rwx CALDB  && \
     mkdir -p /workdir/linux-64 && \
     chmod -R a+rwx /workdir/linux-64
 
@@ -31,8 +31,10 @@ USER saotrace
 ENV PATH $CONDA_DIR/bin:$PATH
 RUN curl -L https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -o /tmp/miniconda.sh && \
     /bin/bash /tmp/miniconda.sh -b -p $CONDA_DIR && \
-    rm -rf /tmp/miniconda.sh && \
-    conda install conda-build --yes 
+    rm -rf /tmp/miniconda.sh 
+    
+###    && \
+###    conda install conda-build --yes 
 
 # After installing CIAO 4.17 we delete a bunch of stuff that is not
 # needed for ChaRT including
@@ -44,13 +46,28 @@ RUN curl -L https://github.com/conda-forge/miniforge/releases/latest/download/Mi
 
 # Install CIAO
 
-COPY ciao-4.18.0.dev-py312h90da0fc_0.conda ./linux-64/
+### COPY ciao-4.18.0.dev-py312h90da0fc_0.conda ./linux-64/
+###    conda index /workdir && \
+###    conda create -n ciao-${CIAOVER} -c file://`pwd`/ -c https://cxc.cfa.harvard.edu/conda/test \
+###       ciao=4.18.0.dev sherpa ciao-contrib file &&\
+
 
 RUN \
-    conda index /workdir && \
-    conda create -n ciao-${CIAOVER} -c file://`pwd`/ -c https://cxc.cfa.harvard.edu/conda/test \
-       ciao=4.18.0.dev sherpa ciao-contrib file \
-     &&\
+    conda create -n ciao-${CIAOVER} -c https://cxc.cfa.harvard.edu/conda/ciao \
+        ciao pyciao sherpa ciao-contrib file && \
+    cd $CONDA_DIR/envs/ciao-${CIAOVER} && \
+    /bin/rm -rf spectral test include docs && \
+    (cd data && /bin/ls *.fits | grep -v wtsimres | xargs -I@ /bin/rm @) && \
+    conda remove -n ciao-${CIAOVER} boost-cpp qt-main \
+      xorg-kbproto xorg-libice xorg-libsm xorg-libx11 \
+      xorg-libxau xorg-libxdmcp xorg-libxext \
+      xorg-libxrender xorg-renderproto xorg-xextproto xorg-xproto \
+      jupyter notebook pyqt pyqt5-sip \
+      jupyter-lsp jupyter_client jupyter_console \
+      jupyter_core jupyter_events jupyter_server jupyter_server_terminals \
+      jupyterlab jupyterlab_pygments jupyterlab_server jupyterlab_widgets \
+      --force -y && \
+    \
     conda clean -tipy && \
     conda env config vars set CALDB=$CONDA_DIR/envs/ciao-${CIAOVER}/CALDB -n ciao-${CIAOVER} && \
     conda env config vars set CALDBCONFIG=$CONDA_DIR/envs/ciao-${CIAOVER}/CALDB/software/tools/caldb.config -n ciao-${CIAOVER} && \
@@ -77,7 +94,7 @@ COPY launch /proj/saotrace
 COPY simpsf.tar ./
 
 RUN \
-	tar xf simpsf.tar && \
+    tar xf simpsf.tar && \
     mv -vf simulate_psf $CONDA_DIR/envs/ciao-${CIAOVER}/bin/simulate_psf && \
     mv -vf simulate_psf.par $CONDA_DIR/envs/ciao-${CIAOVER}/param/simulate_psf.par && \
     mv -vf runtool.py $CONDA_DIR/envs/ciao-${CIAOVER}/lib/python${PYVER}/site-packages/ciao_contrib/runtool.py  && \
