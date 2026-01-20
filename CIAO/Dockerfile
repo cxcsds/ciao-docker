@@ -1,8 +1,8 @@
 FROM debian:stable
 
 LABEL maintainer="Ken Glotfelty <glotfeltyk@si.edu>" \
-      description="CIAO 4.17/debian:stable; this is *not* an official CXC product" \
-      version="ciao-4.17/conda/debian:stable"
+      description="CIAO 4.18/debian:stable; this is *not* an official CXC product" \
+      version="ciao-4.18/conda/debian:stable"
 
 ARG CONDA_DIR=/opt/conda
 ARG USERNAME=docker
@@ -29,7 +29,7 @@ RUN useradd --create-home -s /bin/bash --no-user-group -u $USERID $USERNAME && \
 
 USER $USERNAME
 WORKDIR /home/$USERNAME
-ADD ./ciao-4.17.0.yml jupyter_lab_config.py jupyter_notebook_config.py .
+ADD ./ciao-4.18.0.yml jupyter_lab_config.py jupyter_notebook_config.py .
 
 # Install miniconda
 ENV PATH $CONDA_DIR/bin:$PATH
@@ -39,9 +39,9 @@ RUN wget --quiet https://github.com/conda-forge/miniforge/releases/latest/downlo
     mkdir ~/.jupyter && \
     mv jupyter_lab_config.py jupyter_notebook_config.py ~/.jupyter/
 
-RUN conda env create -n ciao-4.17.0 --file ./ciao-4.17.0.yml &&\
+RUN conda env create -n ciao-4.18.0 --file ./ciao-4.18.0.yml &&\
     conda clean -tipy && \
     conda init bash && \
-    echo "conda activate ciao-4.17.0" >> /home/$USERNAME/.bashrc 
+    echo "conda activate ciao-4.18.0" >> /home/$USERNAME/.bashrc
 
 
