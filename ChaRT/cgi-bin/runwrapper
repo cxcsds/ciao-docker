@@ -1,9 +1,10 @@
 #! /bin/bash
 
-CIAO_ROOT=/opt/conda/envs/ciao-4.17.0
+CIAO_ROOT=/opt/conda/envs/ciao-4.18.0
 HTTP_ROOT=/proj/saotrace
 SAOTRACE_ROOT=/opt/saotrace
-export SAOTRACE_DB=/opt/saotrace-db
+TMP_ROOT=/workdir/output
+#~ export SAOTRACE_DB=/opt/saotrace-db
 
 
 #~ USER=root
@@ -11,14 +12,13 @@ export SAOTRACE_DB=/opt/saotrace-db
 #~ HOME=/home/$USER
 #~ export HOME
 
-TMP_ROOT=/workdir/output
 
 mkdir -p ${TMP_ROOT}
 
 export INSTALLDIR=${SAOTRACE_ROOT}
 source ${INSTALLDIR}/bin/saotrace_setup.sh
 
-#~ source ${CIAO_ROOT}/bin/ciao.sh -o  -q 2>&1 
+#~ source ${CIAO_ROOT}/bin/ciao.sh -o  -q 2>&1
 #~ conda activate ciao-4.17.0
 ASCDS_WORK_PATH=$TMP_ROOT
 
@@ -31,7 +31,7 @@ cd ${HTTP_ROOT}/soft
 # It returns the tmpdir name.  All files and pickled python
 # stuff is stored in there ready to run.
 
-tmpdir=`${HTTP_ROOT}/soft/runchart_frontend` 
+tmpdir=`${HTTP_ROOT}/soft/runchart_frontend`
 stt=$?
 
 if test $stt -ne 0
@@ -44,7 +44,7 @@ fi
 chmod 777 $tmpdir
 
 # Run the backend in background to let web connection close
- 
+
 ${HTTP_ROOT}/soft/runchart_backend $tmpdir 2>&1
 
 
