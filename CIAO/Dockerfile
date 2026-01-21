@@ -9,7 +9,7 @@ ARG USERNAME=docker
 ARG USERID=1000
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends git wget unzip bzip2 build-essential ca-certificates x11-apps libxml2 sudo file curl && \
+    apt-get install -y --no-install-recommends git wget unzip bzip2 build-essential ca-certificates x11-apps libxml2 sudo file curl adduser && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -19,11 +19,11 @@ ENV DISPLAY :0
 EXPOSE 8888
 
 # Create the user
-RUN useradd --create-home -s /bin/bash --no-user-group -u $USERID $USERNAME && \
+RUN adduser --home /home/$USERNAME --shell /bin/bash --uid $USERID $USERNAME && \
     mkdir -p /opt && \
     chmod 777 /opt && \
     chown $USERNAME /opt && \
-    adduser $USERNAME sudo && \
+    usermod -aG sudo $USERNAME && \
     echo "$USERNAME ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     echo 'export PATH=$CONDA_DIR/bin:$PATH' > /etc/profile.d/conda.sh
 
@@ -44,4 +44,5 @@ RUN conda env create -n ciao-4.18.0 --file ./ciao-4.18.0.yml &&\
     conda init bash && \
     echo "conda activate ciao-4.18.0" >> /home/$USERNAME/.bashrc
 
+ENTRYPOINT /bin/bash
 
