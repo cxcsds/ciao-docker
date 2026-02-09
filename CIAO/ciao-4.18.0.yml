@@ -28,7 +28,6 @@ dependencies:
   - cached-property=1.5.2=hd8ed1ab_1
   - cached_property=1.5.2=pyha770c72_1
   - cairo=1.18.4=h3394656_0
-  - caldb_main=4.12.3=0
   - ccfits=2.6=h616e7c2_2
   - certifi=2026.1.4=pyhd8ed1ab_0
   - cffi=2.0.0=py312h35888ee_0
