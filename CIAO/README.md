@@ -1,5 +1,5 @@
 
-# CIAO-4.17 Docker Image
+# CIAO-4.18 Docker Image
 
 ## Install podman (or docker)
 
@@ -29,16 +29,16 @@ docker=docker
 
 ---
 
-## Download ciao-4.17 image tar file
+## Download ciao-4.18 image tar file
 
 
-This is just a temporary location. 
+This is just a temporary location.
 
 ```bash
-curl -O https://saotrace.cfa.harvard.edu/ciao/ciao-4.17.0.pod.tar.gz 
+curl -O https://saotrace.cfa.harvard.edu/ciao/ciao-4.18.0.pod.tar.gz
 ```
 
-The download is ~3Gb. Do not un-tar and do not un-gzip the file. 
+The download is ~3Gb. Do not un-tar and do not un-gzip the file.
 
 
 ---
@@ -51,7 +51,7 @@ in your home directory, and you will exceed quota.
 Run
 
 ```bash
-$docker load -i ciao-4.17.0.pod.tar.gz
+$docker load -i ciao-4.18.0.pod.tar.gz
 ```
 
 For those in the know, this is equivalent to running
@@ -71,10 +71,10 @@ Run
 ```bash
 $docker image ls
 REPOSITORY                TAG         IMAGE ID      CREATED         SIZE
-localhost/ciao            4.17        6c2c8a2b5041  11 minutes ago  6.85 GB
+localhost/ciao            4.18        c8a833ded433  8 days ago     6.81 GB
 ```
 
-You can refer to the image as `ciao:4.17` or by the SHA `6c2c8a2b5041`
+You can refer to the image as `ciao:4.18` or by the SHA `c8a833ded433`
 
 
 ---
@@ -91,10 +91,10 @@ $docker run -i -t --rm \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v $XAUTHORITY:/home/docker/.Xauthority \
   -p 8888:8888 \
-  ciao:4.17
+  ciao:4.18
 ```
 
-The last `ciao:4.17` is the tag for the image.
+The last `ciao:4.18` is the tag for the image.
 
 Most of the various flags are to get X11 to work securely. **Note**: You
 may not have `$XAUTHORITY` set.  If that's the case then try
@@ -103,7 +103,7 @@ work; you might need to try the macOS instructions.
 
 The `-p` flag is needed to run Jupyter labs/notebooks.
 
-You will probably need to `chown` the `.Xauthority` file 
+You will probably need to `chown` the `.Xauthority` file
 
 ```bash
 sudo chown docker:docker /home/docker/.Xauthority
@@ -126,7 +126,7 @@ Next, in your `terminal` you will need to run
 xhost + 127.0.0.1
 ```
 
-before running the container. 
+before running the container.
 
 Then
 
@@ -134,7 +134,7 @@ Then
 $docker run --rm -i -t \
     -e DISPLAY=host.docker.internal:0 \
     -p 8888:8888 \
-    ciao:4.17
+    ciao:4.18
 ```
 
 You should run `xhost -` after you are done and exit the container.
@@ -146,10 +146,10 @@ Window users -- if you have an Xserver running you can try the same command
 as macos.  Otherwise you can simply run
 
 ```bash
-$docker run --rm -i -t -p 8888:8888 ciao:4.17
+$docker run --rm -i -t -p 8888:8888 ciao:4.18
 ```
 
-Note that ds9 and matplotlib will not work w/o an Xserver.
+Note that ds9 and matplotlib will not work with out an Xserver.
 
 ## Start Working
 
@@ -157,10 +157,10 @@ At this point you will be logged into the container and the prompt will
 change and look something like:
 
 ```bash
-(ciao-4.17.0) docker@my_laptop_name:~$
+(ciao-4.18.0) docker@my_laptop_name:~$
 ```
 
-The `(ciao-4.17.0)` is the standard conda prompt change.  `docker` is the
+The `(ciao-4.18.0)` is the standard conda prompt change.  `docker` is the
 username inside the container.
 
 
@@ -185,7 +185,7 @@ $docker run -i -t \
   -v $XAUTHORITY:/home/docker/.Xauthority \
   -v $HOME/MyDataDirectory:/home/docker/data \
   -p 8888:8888 \
-  ciao:4.17
+  ciao:4.18
 ```
 
 would mount the `$HOME/MyDataDirectory` directory on the host
